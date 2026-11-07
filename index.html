@@ -72,6 +72,7 @@
             view += `<div class="actions">
                         <button class="new">Add</button> <!-- Añado el botón Add (New) -->
                         <button class="reset">Reset</button> <!-- Añado el botón Reset -->
+                        <button class="searchFrom">Search</button> <!-- EXTRA: Añado el botón Search -->
                     </div>`;
 
             return view;
@@ -138,7 +139,54 @@
             </div>`;
         }
 
+        <!-- Extra: Añado searchView -->
+        const searchView = () => {
+            return `<h2>Search Movies</h2>
+            <div class="field">
+                Title <br>
+                <input type="text" id="searchTitle" placeholder="Movie title"> <!-- Campo para introducir el título de la película -->
+            </div>
+            <div class="actions">
+                <button class="search">Search</button> <!-- Botón para realizar la búsqueda -->
+                <button class="index">Back</button> <!-- Botón para volver a la vista principal -->
+            </div>`;
+        };
 
+        <!-- Extra: Añado resultsView -->
+        const resultsView = (results) => {
+            let i = 0;
+            let view = "<h2>Search Results</h2>";
+            
+            <!-- Añado mensaje si no hay resultados -->
+            if (results.length === 0) {
+                view += "<p>No se encontraron películas</p>";
+            }
+
+            while (i < results.length) {
+                let poster = results[i].poster_path
+                ? "https://image.tmdb.org/t/p/w200" + results[i].poster_path
+                : "files/noimage.png";
+                view += `
+                <div class="movie">
+                    <img src="${poster}" onerror="this.src='files/noimage.png'"> <!-- Añado la imagen de la película -->
+                    <h3>${results[i].title}</h3> <!-- Añado el título de la película -->
+                    <p>Fecha de estreno: ${results[i].release_date}</p> <!-- Añado la fecha de estreno de la película -->
+                    <p>${results[i].overview}</p>  <!-- Añado la sinopsis de la película -->
+                    <div class="actions">
+                        <button class="add-from-api" data-my-id="${i}">Add</button> <!-- Botón para añadir la película a la lista de favoritas -->
+                    </div>
+                </div>
+                `;
+                i = i + 1;
+            }
+            view += `<div class="actions">
+                <button class="searchFrom">Back</button> <!-- Botón para volver a la vista de búsqueda -->
+            </div>`;
+            return view;
+        };
+
+
+        let searchResults = []; <!-- Extra: Variable para almacenar los resultados de búsqueda -->
 
         // CONTROLLERS 
         const indexContr = () => {
@@ -200,6 +248,110 @@
         };
 
 
+        <!-- EXTRA: Añado el controlador searchFormContr -->
+        const searchFormContr = () => {
+         document.getElementById('main').innerHTML = searchView(); <!-- Muestra la vista de búsqueda -->
+        };
+
+
+        <!-- EXTRA: Añado el controlador searchMovieContr -->
+        const searchContr = (query) => {
+
+            if (query.trim() === "") { <!-- Validación para evitar búsquedas vacías -->
+                alert("Por favor, introduce el título de una película");
+                return;
+            }
+
+            if (!/^[a-zA-Z0-9 ]+$/.test(query)) { <!-- Validación para evitar caracteres no válidos en el título de la película -->
+                alert("Caracteres no válidos en el título de la película");
+                return;
+            }
+
+            const options = { <!-- Configuración de la solicitud a la API de TMDb -->
+                method: 'GET',
+                headers: {
+                    accept: 'application/json',
+                    Authorization: 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI0Y2EyYmM0ZWU2NzNjOWJjMjdlZWNhODEwNDFjNzQ3ZCIsIm5iZiI6MTc5NDA0OTUyMi40OTYsInN1YiI6IjZhZWYwNWYyNjBmODQ4NDJmOGU3MmY1ZiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.efafZsCWVzRLu0XSyIG9NRREBrhNaPPI2wBprRm00Rg'
+                }
+            };
+
+            fetch('https://api.themoviedb.org/3/search/movie?query=' + encodeURIComponent(query), options)
+
+            .then(response => response.json())
+
+            .then(response => {
+                searchResults = response.results;
+                document.getElementById('main').innerHTML = resultsView(searchResults);
+            }) <!-- EXTRA: Añado el controlador searchMovieContr -->
+
+            .catch(err => console.error(err));
+        };
+
+
+        <!-- EXTRA: Añado el controlador addMovieContr -->
+        const addFromAPIContr = (movie) => {
+
+            if (!movie || !movie.id || !movie.title || movie.title.trim() === "") {
+                alert("Los datos de la película no son válidos");
+                return;
+            } 
+            
+            let i = searchResults.indexOf(movie);
+            
+            let my_movies = JSON.parse(localStorage.my_movies);
+
+            let exists = my_movies.some(m => m.title === movie.title);
+
+            if (exists) {
+                alert("Esta película ya está en tu lista");
+                return;
+            }
+            
+            let poster = searchResults[i].poster_path
+            ? "https://image.tmdb.org/t/p/w200" + searchResults[i].poster_path
+            : "files/noimage.png";
+            
+            let newMovie = {
+                title: searchResults[i].title,
+                director: "Unknown",
+                thumbnail: poster
+            };
+            
+            const options = {
+                method: 'GET',
+                headers: {
+                    accept: 'application/json',
+                    Authorization: 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI0Y2EyYmM0ZWU2NzNjOWJjMjdlZWNhODEwNDFjNzQ3ZCIsIm5iZiI6MTc5NDA0OTUyMi40OTYsInN1YiI6IjZhZWYwNWYyNjBmODQ4NDJmOGU3MmY1ZiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.efafZsCWVzRLu0XSyIG9NRREBrhNaPPI2wBprRm00Rg'
+                }
+            };
+            
+            fetch('https://api.themoviedb.org/3/movie/' + searchResults[i].id + '/credits', options)
+
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("HTTP error: " + response.status);
+                }
+                return response.json();
+            })
+
+            .then(response => {
+                let director = response.crew.find(person => person.job === "Director");
+                if (director) {
+                    newMovie.director = director.name;
+                }
+                my_movies.push(newMovie);
+                localStorage.my_movies = JSON.stringify(my_movies);
+                alert("Película añadida con éxito");
+                indexContr();
+            })
+
+            .catch(err => {
+                console.error(err);
+                alert("Error al conectar con TMDb");
+            });
+        };
+
+
         // EVENT ROUTER
         const matchEvent = (ev, sel) => ev.target.matches(sel);
         const myId = (ev) => Number(ev.target.dataset.myId);
@@ -213,12 +365,25 @@
             else if (matchEvent(ev, '.create')) createContr ();
             else if (matchEvent(ev, '.delete')) deleteContr(myId(ev));
             else if (matchEvent(ev, '.reset')) resetContr();
+            else if (matchEvent(ev, '.searchFrom')) searchFormContr(); <!-- EXTRA: Añado el botón Search -->
+            else if (matchEvent(ev, '.search')) searchContr(document.getElementById('searchTitle').value); <!-- EXTRA: Añado el botón SearchMovie -->
+            else if (matchEvent(ev, '.add-from-api')) {
+                ev.target.disabled = true;
+                addFromAPIContr(searchResults[myId(ev)]);
+            } <!-- EXTRA: Añado el botón add-from-api -->
         })
 
         
         
         // Initialization        
         document.addEventListener('DOMContentLoaded', indexContr);
+
+        <!-- EXTRA: Añado el evento keydown para que al pulsar Enter se realice la búsqueda -->
+        document.addEventListener('keydown', ev => {
+            if (ev.key === 'Enter' && matchEvent(ev, '#searchTitle')) {
+                searchContr(document.getElementById('searchTitle').value);
+            }
+        });
     </script>
 </head>
 

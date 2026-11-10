@@ -139,7 +139,7 @@
             </div>`;
         }
 
-        <!-- Extra: Añado searchView -->
+        // Extra: Añado searchView
         const searchView = () => {
             return `<h2>Search Movies</h2>
             <div class="field">
@@ -152,12 +152,12 @@
             </div>`;
         };
 
-        <!-- Extra: Añado resultsView -->
+        // Extra: Añado resultsView
         const resultsView = (results) => {
             let i = 0;
             let view = "<h2>Search Results</h2>";
             
-            <!-- Añado mensaje si no hay resultados -->
+            // Añado mensaje si no hay resultados
             if (results.length === 0) {
                 view += "<p>No se encontraron películas</p>";
             }
@@ -186,7 +186,7 @@
         };
 
 
-        let searchResults = []; <!-- Extra: Variable para almacenar los resultados de búsqueda -->
+        let searchResults = []; // Extra: Variable para almacenar los resultados de búsqueda 
 
         // CONTROLLERS 
         const indexContr = () => {
@@ -248,26 +248,26 @@
         };
 
 
-        <!-- EXTRA: Añado el controlador searchFormContr -->
+        // EXTRA: Añado el controlador searchFormContr
         const searchFormContr = () => {
-         document.getElementById('main').innerHTML = searchView(); <!-- Muestra la vista de búsqueda -->
+         document.getElementById('main').innerHTML = searchView(); // Muestra la vista de búsqueda
         };
 
 
-        <!-- EXTRA: Añado el controlador searchMovieContr -->
+        // EXTRA: Añado el controlador searchMovieContr
         const searchContr = (query) => {
 
-            if (query.trim() === "") { <!-- Validación para evitar búsquedas vacías -->
+            if (query.trim() === "") { // Validación para evitar búsquedas vacías
                 alert("Por favor, introduce el título de una película");
                 return;
             }
 
-            if (!/^[a-zA-Z0-9 ]+$/.test(query)) { <!-- Validación para evitar caracteres no válidos en el título de la película -->
+            if (!/^[a-zA-Z0-9 ]+$/.test(query)) { // Validación para evitar caracteres no válidos en el título de la película
                 alert("Caracteres no válidos en el título de la película");
                 return;
             }
 
-            const options = { <!-- Configuración de la solicitud a la API de TMDb -->
+            const options = { // Configuración de la solicitud a la API de TMDb
                 method: 'GET',
                 headers: {
                     accept: 'application/json',
@@ -277,18 +277,26 @@
 
             fetch('https://api.themoviedb.org/3/search/movie?query=' + encodeURIComponent(query), options)
 
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("HTTP error: " + response.status);
+                }
+                return response.json();
+            })
 
             .then(response => {
                 searchResults = response.results;
                 document.getElementById('main').innerHTML = resultsView(searchResults);
-            }) <!-- EXTRA: Añado el controlador searchMovieContr -->
+            }) // EXTRA: Añado el controlador searchMovieContr
 
-            .catch(err => console.error(err));
+            .catch(err => {
+                console.error(err);
+                alert("Error al conectar con TMDb");
+            });
         };
 
 
-        <!-- EXTRA: Añado el controlador addMovieContr -->
+        // EXTRA: Añado el controlador addMovieContr
         const addFromAPIContr = (movie) => {
 
             if (!movie || !movie.id || !movie.title || movie.title.trim() === "") {
@@ -365,12 +373,11 @@
             else if (matchEvent(ev, '.create')) createContr ();
             else if (matchEvent(ev, '.delete')) deleteContr(myId(ev));
             else if (matchEvent(ev, '.reset')) resetContr();
-            else if (matchEvent(ev, '.searchFrom')) searchFormContr(); <!-- EXTRA: Añado el botón Search -->
-            else if (matchEvent(ev, '.search')) searchContr(document.getElementById('searchTitle').value); <!-- EXTRA: Añado el botón SearchMovie -->
+            else if (matchEvent(ev, '.searchFrom')) searchFormContr(); // EXTRA: Añado el botón Search
+            else if (matchEvent(ev, '.search')) searchContr(document.getElementById('searchTitle').value); // EXTRA: Añado el botón SearchMovie
             else if (matchEvent(ev, '.add-from-api')) {
-                ev.target.disabled = true;
                 addFromAPIContr(searchResults[myId(ev)]);
-            } <!-- EXTRA: Añado el botón add-from-api -->
+            } // EXTRA: Añado el botón add-from-api
         })
 
         
@@ -378,7 +385,7 @@
         // Initialization        
         document.addEventListener('DOMContentLoaded', indexContr);
 
-        <!-- EXTRA: Añado el evento keydown para que al pulsar Enter se realice la búsqueda -->
+        // EXTRA: Añado el evento keydown para que al pulsar Enter se realice la búsqueda
         document.addEventListener('keydown', ev => {
             if (ev.key === 'Enter' && matchEvent(ev, '#searchTitle')) {
                 searchContr(document.getElementById('searchTitle').value);

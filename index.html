@@ -30,6 +30,84 @@
         div.movie div.movie-img img {width: 100%; height: auto;}
         div.movie div.title {text-align: center; overflow: hidden; text-overflow: ellipsis; width: 200px; white-space: nowrap; }
         div.field {color: var(--primary); text-transform: uppercase; font-size: 12px;}
+
+        
+        /* MEJORA UX */
+        /* Extra: Añado estilos para las tarjetas de resultados de búsqueda */
+        /* Tarjetas de resultados de búsqueda */
+        div.movie.result-card {
+            display: inline-flex;
+            flex-direction: column;
+            vertical-align: top;
+            width: 220px;
+            height: auto;
+            min-height: 420px;
+            box-sizing: border-box;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+
+        /* Cartel de la película */
+        div.movie.result-card img {
+            width: 100%;
+            height: 245px;
+            object-fit: contain;
+        }
+        
+        
+        /* Título */
+        div.movie.result-card h3 {
+            font-size: 15px;
+            margin: 8px 0 4px;
+        }
+        
+        
+        /* Información */
+        div.movie.result-card p {
+            font-size: 12px;
+            margin: 4px 0;
+        }
+        
+        
+        /* Sinopsis resumida */
+        div.movie.result-card > p.synopsis {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        
+        /* Sinopsis expandida */
+        div.movie.result-card > p.synopsis.expanded {
+            display: block;
+            -webkit-line-clamp: unset;
+            overflow: visible;
+        }
+        
+        /* Botón Leer más */
+        div.movie.result-card .read-more {
+            border: none;
+            background: transparent;
+            color: var(--primary);
+            text-transform: none;
+            font-size: 12px;
+            height: auto;
+            padding: 0;
+            margin: 4px 0;
+            align-self: flex-start;
+        }
+        
+        div.movie.result-card .read-more:hover {
+            text-decoration: underline;
+        }
+        
+        
+        /* Botones alineados abajo */
+        div.movie.result-card .actions {
+            margin-top: auto;
+        }
     </style>
 
     <script type="text/javascript">
@@ -73,6 +151,7 @@
                         <button class="new">Add</button> <!-- Añado el botón Add (New) -->
                         <button class="reset">Reset</button> <!-- Añado el botón Reset -->
                         <button class="searchFrom">Search</button> <!-- EXTRA: Añado el botón Search -->
+                        <button class="my-keywords">Mis palabras clave</button> <!-- EXTRA: Añado el botón Mis palabras clave -->
                     </div>`;
 
             return view;
@@ -167,13 +246,15 @@
                 ? "https://image.tmdb.org/t/p/w200" + results[i].poster_path
                 : "files/noimage.png";
                 view += `
-                <div class="movie">
+                <div class="movie result-card">
                     <img src="${poster}" onerror="this.src='files/noimage.png'"> <!-- Añado la imagen de la película -->
                     <h3>${results[i].title}</h3> <!-- Añado el título de la película -->
                     <p>Fecha de estreno: ${results[i].release_date}</p> <!-- Añado la fecha de estreno de la película -->
-                    <p>${results[i].overview}</p>  <!-- Añado la sinopsis de la película -->
+                    <p class="synopsis">${results[i].overview}</p>
+                    <button class="read-more">Leer más</button>
                     <div class="actions">
                         <button class="add-from-api" data-my-id="${i}">Add</button> <!-- Botón para añadir la película a la lista de favoritas -->
+                        <button class="keywords" data-my-id="${i}">Keywords</button> <!-- Botón para obtener las palabras clave de la película -->
                     </div>
                 </div>
                 `;
@@ -182,6 +263,59 @@
             view += `<div class="actions">
                 <button class="searchFrom">Back</button> <!-- Botón para volver a la vista de búsqueda -->
             </div>`;
+            return view;
+        };
+
+
+        // Extra: Añado keywordsView
+        let keywordsByMovie = {};
+        const keywordsView = (movieId) => {
+            let keywords = keywordsByMovie[movieId] || [];
+            let view = "<h2>Palabras clave</h2>";
+            if (keywords.length === 0) {
+                view += "<p>No se encontraron palabras clave</p>";
+            }
+            for (let i = 0; i < keywords.length; i++) {
+                view += `
+                <div class="actions">
+                    ${keywords[i]}
+                    <button class="add-keyword" data-keyword="${keywords[i]}"> <!-- Botón para añadir la palabra clave a la lista del usuario -->
+                        Añadir a mi lista
+                    </button>
+                </div>
+                `;
+            }
+                view += `
+                <div class="actions">
+                    <button class="index">Back</button>
+                </div>
+                `;
+            return view;
+        };
+
+
+        // Extra: Añado myKeywordsView
+        const myKeywordsView = () => {
+            let my_keywords = JSON.parse(localStorage.my_keywords || "[]");
+            let view = "<h2>Mis palabras clave</h2>";
+            if (my_keywords.length === 0) {
+                view += "<p>No tienes palabras clave guardadas</p>";
+            }
+            for (let i = 0; i < my_keywords.length; i++) {
+                view += `
+                <div class="actions">
+                    ${my_keywords[i]}
+                    <button class="delete-keyword" data-my-id="${i}">
+                        Eliminar
+                    </button>
+                </div>
+                `;
+            }
+            view += `
+            <div class="actions">
+                <button class="index">Back</button>
+            </div>
+            `;
             return view;
         };
 
@@ -360,6 +494,71 @@
         };
 
 
+        // Extra: Añado la función cleanKeyword para limpiar las palabras clave
+        const cleanKeyword = (keyword) => {
+            return keyword
+            .replace(/[^a-zñáéíóú0-9 ]+/igm, "")
+            .trim()
+            .toLowerCase();
+        };
+
+
+        // Extra: Añado la función processKeywords para procesar las palabras clave
+        const processKeywords = (keywords) => {
+            let processedKeywords = [];
+            for (let i = 0; i < keywords.length; i++) {
+                let keyword = cleanKeyword(keywords[i].name);
+                if (keyword !== "" && !processedKeywords.includes(keyword)) {
+                    processedKeywords.push(keyword);
+                }
+            }
+            processedKeywords.sort();
+            return processedKeywords;
+        };
+
+
+        // Extra: Controlador para obtener las palabras clave de una película
+        const keywordsContr = (movieId) => {
+            const options = {
+                method: 'GET',
+                headers: {
+                    accept: 'application/json',
+                    Authorization: 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI0Y2EyYmM0ZWU2NzNjOWJjMjdlZWNhODEwNDFjNzQ3ZCIsIm5iZiI6MTc5NDA0OTUyMi40OTYsInN1YiI6IjZhZWYwNWYyNjBmODQ4NDJmOGU3MmY1ZiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.efafZsCWVzRLu0XSyIG9NRREBrhNaPPI2wBprRm00Rg'
+                }
+            };
+            fetch('https://api.themoviedb.org/3/movie/' + movieId + '/keywords', options)
+            .then(response => response.json())
+            .then(response => {
+                let processedKeywords = processKeywords(response.keywords);
+                keywordsByMovie[movieId] = processedKeywords;
+                document.getElementById('main').innerHTML = keywordsView(movieId);
+            })
+            .catch(err => console.error(err));
+        };
+
+
+        // Extra: Añado la función addKeywordToList para añadir palabras clave a la lista del usuario
+        const addKeywordToList = (keyword) => {
+            let my_keywords = JSON.parse(localStorage.my_keywords || "[]");
+            if (!my_keywords.includes(keyword)) {
+                my_keywords.push(keyword);
+                localStorage.my_keywords = JSON.stringify(my_keywords);
+                alert("Palabra clave añadida a tu lista");
+            } else {
+                alert("Esta palabra clave ya está en tu lista");
+            }
+        };
+
+
+        // Extra: Añado la función deleteKeyword para eliminar palabras clave de la lista del usuario
+        const deleteKeyword = (i) => {
+            let my_keywords = JSON.parse(localStorage.my_keywords || "[]");
+            my_keywords.splice(i, 1);
+            localStorage.my_keywords = JSON.stringify(my_keywords);
+            document.getElementById('main').innerHTML = myKeywordsView();
+        };
+
+
         // EVENT ROUTER
         const matchEvent = (ev, sel) => ev.target.matches(sel);
         const myId = (ev) => Number(ev.target.dataset.myId);
@@ -375,11 +574,19 @@
             else if (matchEvent(ev, '.reset')) resetContr();
             else if (matchEvent(ev, '.searchFrom')) searchFormContr(); // EXTRA: Añado el botón Search
             else if (matchEvent(ev, '.search')) searchContr(document.getElementById('searchTitle').value); // EXTRA: Añado el botón SearchMovie
-            else if (matchEvent(ev, '.add-from-api')) {
-                addFromAPIContr(searchResults[myId(ev)]);
-            } // EXTRA: Añado el botón add-from-api
+            else if (matchEvent(ev, '.read-more')) {
+                let synopsis = ev.target.previousElementSibling;
+                synopsis.classList.toggle('expanded');
+                ev.target.textContent = synopsis.classList.contains('expanded')
+                ? 'Leer menos'
+                : 'Leer más';
+            } // Extra: Añado el botón Read More
+            else if (matchEvent(ev, '.keywords')) keywordsContr(searchResults[myId(ev)].id); // EXTRA: Añado el botón Keywords
+            else if (matchEvent(ev, '.add-keyword')) addKeywordToList(ev.target.dataset.keyword); // Extra: Añado el botón add-keyword
+            else if (matchEvent(ev, '.delete-keyword')) deleteKeyword(myId(ev)); // Extra: Añado el botón delete-keyword
+            else if (matchEvent(ev, '.my-keywords')) { document.getElementById('main').innerHTML = myKeywordsView();} // Extra: Añado el botón my-keywords
+            else if (matchEvent(ev, '.add-from-api')) { addFromAPIContr(searchResults[myId(ev)]);} // EXTRA: Añado el botón add-from-api
         })
-
         
         
         // Initialization        
